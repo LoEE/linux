@@ -381,11 +381,51 @@ static struct regulator_init_data beagle_vsim = {
 	.consumer_supplies	= beagle_vsim_supply,
 };
 
+static struct regulator_consumer_supply beagle_vaux3_supply[] = {
+	REGULATOR_SUPPLY("vdd", "2-0048"),
+};
+
+static struct regulator_consumer_supply beagle_vaux4_supply[] = {
+	REGULATOR_SUPPLY("vdd_io", "2-0048"),
+};
+
+/* VAUX3 for CAM_1V8 */
+static struct regulator_init_data beagle_vaux3 = {
+	.constraints = {
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask		= REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies		= ARRAY_SIZE(beagle_vaux3_supply),
+	.consumer_supplies		= beagle_vaux3_supply,
+};
+
+/* VAUX4 for CAM_2V8 */
+static struct regulator_init_data beagle_vaux4 = {
+	.constraints = {
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask		= REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies		= ARRAY_SIZE(beagle_vaux4_supply),
+	.consumer_supplies		= beagle_vaux4_supply,
+};
+
 static struct twl4030_platform_data beagle_twldata = {
 	/* platform_data for children goes here */
 	.gpio		= &beagle_gpio_data,
 	.vmmc1		= &beagle_vmmc1,
 	.vsim		= &beagle_vsim,
+	.vaux3          = &beagle_vaux3,
+	.vaux4          = &beagle_vaux4,
 };
 
 static struct i2c_board_info __initdata beagle_i2c_eeprom[] = {
