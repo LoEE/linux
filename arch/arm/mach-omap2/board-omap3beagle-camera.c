@@ -18,6 +18,7 @@
 #include <media/omap3isp.h>
 
 #include "devices.h"
+#include "soc.h"
 
 #define MT9P031_RESET_GPIO	98
 
