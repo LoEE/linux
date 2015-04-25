@@ -46,7 +46,7 @@ MODULE_DESCRIPTION("A low-level driver for Dahua dh9901 sensors");
 MODULE_LICENSE("GPL");
 
 //for internel driver debug
-#define DEV_DBG_EN   		0
+#define DEV_DBG_EN   		1
 #if(DEV_DBG_EN == 1)
 #define csi_dev_dbg(x,arg...) printk(KERN_INFO"[CSI_DEBUG][DH9901]"x,##arg)
 #else
@@ -1136,6 +1136,7 @@ static struct regval_list sensor_fmt_raw[] = {
 static int sensor_read(struct v4l2_subdev *sd, unsigned char *reg,
 		unsigned char *value)
 {
+	return;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	u8 data[REG_STEP];
 	struct i2c_msg msg;
@@ -1182,6 +1183,7 @@ static int sensor_read(struct v4l2_subdev *sd, unsigned char *reg,
 static int sensor_write(struct v4l2_subdev *sd, unsigned char *reg,
 		unsigned char *value)
 {
+	return;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct i2c_msg msg;
 	unsigned char data[REG_STEP];
@@ -1214,6 +1216,7 @@ static int sensor_write(struct v4l2_subdev *sd, unsigned char *reg,
  */
 static int sensor_write_array(struct v4l2_subdev *sd, struct regval_list *vals , uint size)
 {
+	return;
 	int i,ret;
 	if (size == 0)
 		return -EINVAL;
@@ -1407,6 +1410,7 @@ static int sensor_reset(struct v4l2_subdev *sd, u32 val)
 
 static int sensor_detect(struct v4l2_subdev *sd)
 {
+	return 0;
 	int ret;
 	struct regval_list regs;
 
@@ -1662,8 +1666,8 @@ static int sensor_try_fmt_internal(struct v4l2_subdev *sd,
 	/*
 	 * Note the size we'll actually handle.
 	 */
-	fmt->width = wsize->width;//linux-3.0
-	fmt->height = wsize->height;//linux-3.0
+	// fmt->width = wsize->width;//linux-3.0
+	// fmt->height = wsize->height;//linux-3.0
 	//pix->bytesperline = pix->width*sensor_formats[index].bpp;//linux-3.0
 	//pix->sizeimage = pix->height*pix->bytesperline;//linux-3.0
 
