@@ -900,7 +900,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 		if ((dev->fmt->fourcc == V4L2_PIX_FMT_NV61) || (dev->fmt->fourcc == V4L2_PIX_FMT_NV21))
 			dev->csi_mode.seq = CSI_YVYU;
 		else
-			dev->csi_mode.seq = CSI_YUYV;
+			dev->csi_mode.seq = CSI_UYVY;
 		break;
 	case V4L2_MBUS_FMT_YVYU8_2X8://linux-3.0
 		dev->csi_mode.seq = CSI_YVYU;
