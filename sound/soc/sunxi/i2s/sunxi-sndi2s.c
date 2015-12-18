@@ -168,7 +168,8 @@ static s32 get_clock_divder(u32 sample_rate, u32 sample_width, u32 * mclk_div, u
 {
 	u32 i, j, ret = -EINVAL;
 
-	for(i=0; i< 100; i++) {
+	/*for(i=0; i< 100; i++) {*/ /*minor improvement*/
+	for(i=0; i < (sizeof(MCLK_INF) / sizeof(__mclk_set_inf)); ++i) {
 		 if((MCLK_INF[i].samp_rate == sample_rate) &&
 		 	((MCLK_INF[i].mult_fs == 256) || (MCLK_INF[i].mult_fs == 128))) {
 			  for(j=0; j<ARRAY_SIZE(BCLK_INF); j++) {
@@ -184,8 +185,8 @@ static s32 get_clock_divder(u32 sample_rate, u32 sample_width, u32 * mclk_div, u
 					}
 			  }
 		 }
-		 else if(MCLK_INF[i].samp_rate == 0xffffffff)
-		 	break;
+		 /*else if(MCLK_INF[i].samp_rate == 0xffffffff)
+		 	break;*/
 	}
 
 	return ret;

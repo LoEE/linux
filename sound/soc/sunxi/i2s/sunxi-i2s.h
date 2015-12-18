@@ -78,7 +78,7 @@
 
 #define SUNXI_IISTXFIFO 	(0x0C)
 
-#define SUNXI_IISRXFIFO 	(0x10)
+#define SUNXI_IISRXFIFO 	/*(0x10)*//*debug*/(0x12)
 
 #define SUNXI_IISFCTL  	(0x14)
 	#define SUNXI_IISFCTL_FIFOSRC			(1<<31)
@@ -104,7 +104,7 @@
 	#define SUNXI_IISINT_TXUIEN				(1<<6)
 	#define SUNXI_IISINT_TXOIEN				(1<<5)
 	#define SUNXI_IISINT_TXEIEN				(1<<4)
-	#define SUNXI_IISINT_RXDRQEN				(1<<2)
+	#define SUNXI_IISINT_RXDRQEN				(1<<3)/*poprawione*/
 	#define SUNXI_IISINT_RXOIEN				(1<<1)
 	#define SUNXI_IISINT_RXAIEN				(1<<0)
 

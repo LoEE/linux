@@ -32,8 +32,6 @@
 #include "sunxi-i2s.h"
 #include "sunxi-i2sdma.h"
 
-static volatile unsigned int dmasrc = 0;
-static volatile unsigned int dmadst = 0;
 
 static const struct snd_pcm_hardware sunxi_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
@@ -75,11 +73,20 @@ static void sunxi_pcm_enqueue(struct snd_pcm_substream *substream)
 	unsigned long len = prtd->dma_period;
   	limit = prtd->dma_limit;
   	while(prtd->dma_loaded < limit) {
+		/*printk("Entering sunxi_pcm_enqueue\nptrd->dma_loaded:\t%d\nlimit:\t%d\ncapture:\t%d\n", prtd->dma_loaded, limit, substream->stream);*/
 		if((pos + len) > prtd->dma_end) {
 			len  = prtd->dma_end - pos;
 		}
 
-		ret = sunxi_dma_enqueue(prtd->params, pos,  len, 0);
+		/*{
+		  dma_addr_t x = pos;
+		  int i;
+		  for(i = 0; i < len; i+=4) {
+		    writel(0xDEADBEEF, phys_to_virt(x)); x += 4;
+		  }
+		}*/
+		ret = sunxi_dma_enqueue(prtd->params, pos,  len, substream->stream != SNDRV_PCM_STREAM_PLAYBACK);
+
 		if(ret == 0) {
 			prtd->dma_loaded++;
 			pos += prtd->dma_period;
@@ -105,6 +112,7 @@ static void sunxi_audio_buffdone(struct sunxi_dma_params *dma, void *dev_id)
 
 	spin_lock(&prtd->lock);
 	{
+		/*printk("dma_loaded: %p > %p > %p \n", (const void* const)(prtd->dma_start), (const void* const)(prtd->dma_pos), (const void* const)(prtd->dma_end));*/
 		prtd->dma_loaded--;
 		sunxi_pcm_enqueue(substream);
 	}
@@ -124,6 +132,8 @@ static int sunxi_pcm_hw_params(struct snd_pcm_substream *substream,
 	int ret = 0;
 	if (!dma)
 		return 0;
+
+	printk("sunxi_pcm_hw_params: %p\n", (const void* const)(dma->dma_addr));
 
 	if (prtd->params == NULL) {
 		prtd->params = dma;
@@ -181,6 +191,7 @@ static int sunxi_pcm_prepare(struct snd_pcm_substream *substream)
 	if (!prtd->params)
 		return 0;
 
+	printk("sunxi_pcm_prepare: %d\n", substream->stream == SNDRV_PCM_STREAM_PLAYBACK);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 #if defined CONFIG_ARCH_SUN4I || defined CONFIG_ARCH_SUN5I
 		struct dma_hw_conf codec_dma_conf;
@@ -193,6 +204,7 @@ static int sunxi_pcm_prepare(struct snd_pcm_substream *substream)
 		codec_dma_conf.hf_irq       = SW_DMA_IRQ_FULL;
 		codec_dma_conf.from         = prtd->dma_start;
 		codec_dma_conf.to           = prtd->params->dma_addr;
+		ret = sunxi_dma_config(prtd->params, &codec_dma_conf, 0);
 #else
 		dma_config_t codec_dma_conf;
 		memset(&codec_dma_conf, 0, sizeof(codec_dma_conf));
@@ -206,9 +218,32 @@ static int sunxi_pcm_prepare(struct snd_pcm_substream *substream)
 		codec_dma_conf.dst_drq_type		= N_DST_IIS0_TX;
 		codec_dma_conf.bconti_mode		= false;
 		codec_dma_conf.irq_spt			= CHAN_IRQ_FD;
-#endif
 		ret = sunxi_dma_config(prtd->params, &codec_dma_conf, 0);
+#endif
+	} else {
+#if defined CONFIG_ARCH_SUN4I || defined CONFIG_ARCH_SUN5I
+		printk("unsupported sunxi DMA for record\n");
+#else
+		dma_config_t codec_dma_conf;
+		printk("setting up DMA for record\n");
+		memset(&codec_dma_conf, 0, sizeof(codec_dma_conf));
+		/*codec_dma_conf.xfer_type.src_data_width	= DATA_WIDTH_32BIT;*/
+		codec_dma_conf.xfer_type.src_data_width	= DATA_WIDTH_16BIT;
+		/*codec_dma_conf.xfer_type.src_bst_len	= DATA_BRST_4;	*/
+		codec_dma_conf.xfer_type.src_bst_len	= DATA_BRST_1;	
+		codec_dma_conf.xfer_type.dst_data_width	= DATA_WIDTH_32BIT;
+		/*codec_dma_conf.xfer_type.dst_bst_len	= DATA_BRST_4;*/
+		codec_dma_conf.xfer_type.dst_bst_len	= DATA_BRST_8;
+		codec_dma_conf.address_type.src_addr_mode = NDMA_ADDR_NOCHANGE;
+		codec_dma_conf.address_type.dst_addr_mode = NDMA_ADDR_INCREMENT;
+		codec_dma_conf.src_drq_type		= N_SRC_IIS0_RX;
+		codec_dma_conf.dst_drq_type		= N_DST_SDRAM;
+		codec_dma_conf.bconti_mode		= false;
+		codec_dma_conf.irq_spt			= CHAN_IRQ_FD;
+		ret = sunxi_dma_config(prtd->params, &codec_dma_conf, 0);
+#endif
 	}
+	printk("sunxi_dma_config ret: %d\n", ret);
 
 	/* flush the DMA channel */
 	prtd->dma_loaded = 0;
@@ -256,24 +291,33 @@ static snd_pcm_uframes_t sunxi_pcm_pointer(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct sunxi_runtime_data *prtd = runtime->private_data;
-	unsigned long res = 0;
+	/*unsigned long res = 0;*/
 	snd_pcm_uframes_t offset = 0;
+	unsigned int dmasrc = 0;
+	unsigned int dmadst = 0;
 
 	spin_lock(&prtd->lock);
 	sunxi_dma_getcurposition(prtd->params,
 				 (dma_addr_t*)&dmasrc, (dma_addr_t*)&dmadst);
 
+	printk("dmasrc:\t%08X\ndmadst:\t%08X\nruntime->dma_addr:\t%p\nptrd->dma_period:\t%p\n", dmasrc, dmadst, (const void*)(runtime->dma_addr), (const void*)(prtd->dma_period));
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-		res = dmadst - prtd->dma_start;
+	{
+		//res = dmadst - prtd->dma_start;
+		offset = bytes_to_frames(runtime, dmadst + prtd->dma_period - runtime->dma_addr);
+	}
 	else
 	{
 		offset = bytes_to_frames(runtime, dmasrc + prtd->dma_period - runtime->dma_addr);
 	}
 	spin_unlock(&prtd->lock);
 
+	printk("bytes:\t%d\n", dmadst + prtd->dma_period - runtime->dma_addr);
+	printk("offset:\t%d\nruntime->buffer_size:\t%u\n", (signed int)(offset), (unsigned int)(runtime->buffer_size));
 	if(offset >= runtime->buffer_size)
 		offset = 0;
-		return offset;
+
+	return offset;
 }
 
 static int sunxi_pcm_open(struct snd_pcm_substream *substream)
